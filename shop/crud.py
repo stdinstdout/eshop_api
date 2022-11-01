@@ -3,7 +3,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from datetime import datetime
-from typing import List
+from typing import List, Union
 
 from . import models, schemas
 
@@ -28,18 +28,20 @@ def get_all_categories(db: Session):
     return db.query(models.Category).all()
 
 
-# CREATE
+def get_items(db: Session, categories: Union[List[int], None], page_number: int, items_per_page: int):
+    items = db.query(models.ShopItem)
 
-def create_good(db: Session, item: schemas.CreateShopItem):
-
-    item = models.ShopItem(**item.dict())
-    db.add(item)
-    db.commit()
-    db.refresh(item)
+    if categories:
+        items = items.filter(models.ShopItem.category_id.in_(categories))
     
-    return item
+    items = items.offset( (page_number-1)*items_per_page )
+    
+    return items.all()[:items_per_page]
 
 
+
+
+# CREATE 
 
 def create_goods(db: Session, goods: List[schemas.CreateShopItem]):
 
@@ -63,18 +65,6 @@ def create_goods(db: Session, goods: List[schemas.CreateShopItem]):
     list(map(db.refresh, added_goods))
 
     return added_goods
-
-    
- 
-
-def create_category(db: Session, category: str):
-    
-    cat = models.Category(name=category)
-
-    db.add(cat)
-    db.commit()
-    db.refresh(cat)
-    return cat
 
 
 def create_categories(db: Session,  categories: List[str]):

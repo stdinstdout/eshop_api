@@ -1,10 +1,10 @@
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import Body, Depends, FastAPI
+from fastapi import Body, Depends, FastAPI, HTTPException, Query
 
 from sqlalchemy.orm import Session
 
-from typing import List
+from typing import List, Union
 from functools import lru_cache
 
 from .database import SessionLocal, engine
@@ -58,6 +58,21 @@ def import_categories(categories: List[str]  = Body(..., embed=True), db: Sessio
 @app.get('/item/{id}')
 def get_item(id: int, db: Session = Depends(get_db)):
     return crud.get_item_by_id(db, id)
+
+
+@app.get('/items')
+def get_items_page(
+        categories_id: Union[str, None], 
+        items_per_page: int = Query(20, gt=0), 
+        page_number: int = Query(1, ge=1), 
+        db: Session = Depends(get_db)
+        ):
+    
+    if categories_id and items_per_page:
+        return crud.get_items(db, list(map(int, categories_id.split(','))), page_number, items_per_page)
+    
+    else:
+        return crud.get_items(db, None, page_number, items_per_page)
 
 
 @app.get('/items/category/{category_id}')
